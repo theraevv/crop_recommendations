@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crop Recommendation System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <div class="container">
+    <h1>Crop Recommendation System</h1>
+    <p class="subtitle">Enter your soil and climate data to get a crop suggestion</p>
+
+    <div class="form-grid">
+      <div class="input-group">
+        <label>Nitrogen (N)</label>
+        <input type="number" id="N" placeholder="e.g. 90" min="0" max="140">
+      </div>
+      <div class="input-group">
+        <label>Phosphorus (P)</label>
+        <input type="number" id="P" placeholder="e.g. 42" min="5" max="145">
+      </div>
+      <div class="input-group">
+        <label>Potassium (K)</label>
+        <input type="number" id="K" placeholder="e.g. 43" min="5" max="205">
+      </div>
+      <div class="input-group">
+        <label>Temperature (°C)</label>
+        <input type="number" id="temp" placeholder="e.g. 21" step="0.1">
+      </div>
+      <div class="input-group">
+        <label>Humidity (%)</label>
+        <input type="number" id="humidity" placeholder="e.g. 82" step="0.1">
+      </div>
+      <div class="input-group">
+        <label>Soil pH</label>
+        <input type="number" id="ph" placeholder="e.g. 6.5" step="0.1" min="3" max="10">
+      </div>
+      <div class="input-group full-width">
+        <label>Rainfall (mm)</label>
+        <input type="number" id="rainfall" placeholder="e.g. 203" step="0.1">
+      </div>
+    </div>
+
+    <button id="predictBtn" onclick="predict()">Recommend Crop</button>
+
+    <div id="result" class="result hidden">
+      <p class="result-label">Top crop recommendations</p>
+      <div id="top3"></div>
+    </div>
+
+    <div id="error" class="error hidden">
+      Please fill in all fields before predicting.
+    </div>
+  </div>
+
+  <script>
+    async function predict() {
+      const fields = ["N","P","K","temp","humidity","ph","rainfall"];
+      const data = {};
+
+      for (const f of fields) {
+        const val = document.getElementById(f).value;
+        if (val === "") {
+          document.getElementById("error").classList.remove("hidden");
+          document.getElementById("result").classList.add("hidden");
+          return;
+        }
+        data[f] = parseFloat(val);
+      }
+
+      document.getElementById("error").classList.add("hidden");
+      document.getElementById("predictBtn").textContent = "Predicting...";
+
+      const res = await fetch("/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+
+      const json = await res.json();
+      const top3 = json.results;
+      const container = document.getElementById("top3");
+      container.innerHTML = "";
+
+      top3.forEach((item, index) => {
+        const isTop = index === 0;
+        container.innerHTML += `
+          <div class="crop-item ${isTop ? 'crop-top' : ''}">
+            <div class="crop-row">
+              <span class="crop-rank">#${index + 1}</span>
+              <span class="crop-title">${item.crop.toUpperCase()}</span>
+              <span class="crop-pct">${item.confidence}%</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill ${isTop ? 'bar-top' : 'bar-secondary'}"
+                   style="width: ${item.confidence}%"></div>
+            </div>
+          </div>
+        `;
+      });
+
+      document.getElementById("result").classList.remove("hidden");
+      document.getElementById("predictBtn").textContent = "Recommend Crop";
+    }
+  </script>
+
+</body>
+</html>
